@@ -5,14 +5,17 @@ require('dotenv').config();
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
-  },
+    callbackURL: process.env.NODE_ENV === 'production' 
+        ? "https://w03-project-project-2-api.onrender.com/auth/google/callback"
+        : "http://localhost:3000/auth/google/callback"
+},
   function(accessToken, refreshToken, profile, done) {
-    // For now, we'll just return the profile
-    // In a real app, you'd save user to database here
+   
     return done(null, profile);
   }
 ));
+
+
 
 passport.serializeUser((user, done) => {
   done(null, user);
