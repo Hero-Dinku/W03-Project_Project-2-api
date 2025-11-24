@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const session = require("express-session");
@@ -44,16 +44,16 @@ app.use((req, res, next) => {
 app.use("/auth", authRoutes);
 
 // Protected routes
-app.use("/api/books", isAuthenticated, bookRoutes);
-app.use("/api/authors", isAuthenticated, authorRoutes);
+app.use("/api/books", bookRoutes);
+app.use("/api/authors", authorRoutes);
 
 // MongoDB Connection
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/w03-project");
-    console.log("✅ Connected to MongoDB successfully");
+    console.log("? Connected to MongoDB successfully");
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error.message);
+    console.error("? MongoDB connection error:", error.message);
   }
 };
 
@@ -107,8 +107,9 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 Local: http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`🔐 OAuth available at: http://localhost:${PORT}/auth/google`);
+  console.log(`?? Server running on port ${PORT}`);
+  console.log(`?? Local: http://localhost:${PORT}`);
+  console.log(`?? API Documentation: http://localhost:${PORT}/api-docs`);
+  console.log(`?? OAuth available at: http://localhost:${PORT}/auth/google`);
 });
+
