@@ -1,5 +1,6 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const path = require('path');
 
 const options = {
   definition: {
@@ -7,20 +8,31 @@ const options = {
     info: {
       title: 'W03 Project API - Books & Authors',
       version: '1.0.0',
-      description: 'A simple CRUD API for managing books and authors',
+      description: 'Complete CRUD API for managing books and authors with MongoDB',
     },
     servers: [
       {
-        url: process.env.RENDER_URL || 'http://localhost:3000',
+        url: 'https://w03-project-project-2-api.onrender.com',
+        description: 'Production server',
+      },
+      {
+        url: 'http://localhost:3000',
         description: 'Development server',
       },
     ],
   },
-  apis: ['./routes/*.js'], // Path to the API routes
+  apis: [
+    path.join(__dirname, '../routes/*.js'),  // Absolute path for production
+    './routes/*.js',                         // Relative path fallback
+    'routes/*.js'                            // Another fallback option
+  ],
 };
 
 const specs = swaggerJsdoc(options);
 
-module.exports = (app) => {
+const swaggerDocs = (app) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+  console.log('📚 Swagger docs available at /api-docs');
 };
+
+module.exports = swaggerDocs;
