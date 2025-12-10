@@ -1,84 +1,16 @@
 ﻿const express = require('express');
 const router = express.Router();
 const Book = require('../models/Book');
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     Book:
- *       type: object
- *       required:
- *         - title
- *         - author
- *         - year
- *         - price
- *         - genre
- *       properties:
- *         _id:
- *           type: string
- *           description: The auto-generated id of the book
- *         title:
- *           type: string
- *           description: The book title
- *         author:
- *           type: string
- *           description: The author name
- *         year:
- *           type: number
- *           description: The publication year
- *         price:
- *           type: number
- *           description: The book price
- *         genre:
- *           type: string
- *           description: The book genre
- *         inStock:
- *           type: boolean
- *           description: Whether the book is in stock
- *         pages:
- *           type: number
- *           description: Number of pages
- *         rating:
- *           type: number
- *           description: Book rating
- *         isbn:
- *           type: string
- *           description: ISBN number
- *       example:
- *         title: "The Great Gatsby"
- *         author: "F. Scott Fitzgerald"
- *         year: 1925
- *         price: 12.99
- *         genre: "Fiction"
- *         inStock: true
- *         pages: 180
- *         rating: 4.5
- *         isbn: "9780743273565"
- */
-
-/**
- * @swagger
- * tags:
- *   name: Books
- *   description: The books managing API
- */
+const { isAuthenticated } = require('../middleware/auth');
 
 /**
  * @swagger
  * /api/books:
  *   get:
- *     summary: Returns the list of all books
- *     tags: [Books]
+ *     summary: Get all books
  *     responses:
  *       200:
- *         description: The list of books
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Book'
+ *         description: List of books
  */
 router.get('/', async (req, res) => {
     try {
@@ -94,21 +26,15 @@ router.get('/', async (req, res) => {
  * /api/books/{id}:
  *   get:
  *     summary: Get a book by ID
- *     tags: [Books]
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: The book ID
  *     responses:
  *       200:
- *         description: The book data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Book'
+ *         description: Book details
  *       404:
  *         description: Book not found
  */
@@ -129,28 +55,46 @@ router.get('/:id', async (req, res) => {
  * /api/books:
  *   post:
  *     summary: Create a new book
- *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Book'
+ *             type: object
+ *             required:
+ *               - title
+ *               - author
+ *               - year
+ *               - price
+ *               - genre
+ *             properties:
+ *               title:
+ *                 type: string
+ *               author:
+ *                 type: string
+ *               year:
+ *                 type: number
+ *               price:
+ *                 type: number
+ *               genre:
+ *                 type: string
+ *               inStock:
+ *                 type: boolean
  *     responses:
  *       201:
- *         description: Book created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Book'
+ *         description: Book created
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Unauthorized
  */
-router.post('/', async (req, res) => {
+router.post('/', isAuthenticated, async (req, res) => {
     try {
         const book = new Book(req.body);
-        const newBook = await book.save();
-        res.status(201).json(newBook);
+        await book.save();
+        res.status(201).json(book);
     } catch (error) {
         if (error.name === 'ValidationError') {
             res.status(400).json({ message: error.message });
@@ -164,50 +108,45 @@ router.post('/', async (req, res) => {
  * @swagger
  * /api/books/{id}:
  *   put:
- *     summary: Update a book by ID
- *     tags: [Books]
+ *     summary: Update a book
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: The book ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Book'
+ *             type: object
  *     responses:
  *       200:
- *         description: Book updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Book'
- *       404:
- *         description: Book not found
+ *         description: Book updated
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Book not found
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', isAuthenticated, async (req, res) => {
     try {
-        const book = await Book.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
+        const book = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
         if (!book) {
             return res.status(404).json({ message: 'Book not found' });
         }
-        res.json(book);
-    } catch (error) {
         if (error.name === 'ValidationError') {
             res.status(400).json({ message: error.message });
         } else {
             res.status(500).json({ message: error.message });
         }
+        res.json(book);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
@@ -216,21 +155,23 @@ router.put('/:id', async (req, res) => {
  * /api/books/{id}:
  *   delete:
  *     summary: Delete a book by ID
- *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: The book ID
  *     responses:
  *       200:
  *         description: Book deleted successfully
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Book not found
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', isAuthenticated, async (req, res) => {
     try {
         const book = await Book.findByIdAndDelete(req.params.id);
         if (!book) {

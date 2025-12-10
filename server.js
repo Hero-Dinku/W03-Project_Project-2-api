@@ -1,16 +1,22 @@
-const express = require("express");
-const mongoose = require("mongoose");
+﻿const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
+require("dotenv").config();
+
+// Session and OAuth
 const session = require("express-session");
 const passport = require("passport");
-require("dotenv").config();
 require("./config/passport");
 
-const bookRoutes = require("./routes/books");
+// Routes
 const authorRoutes = require("./routes/authors");
 const authRoutes = require("./routes/auth");
-const swaggerDocs = require("./swagger/swagger");
+const bookRoutes = require("./routes/books");
+const categoryRoutes = require("./routes/categories");
+const publisherRoutes = require("./routes/publishers");
+
 const { isAuthenticated } = require("./middleware/auth");
+const swaggerDocs = require("./swagger/swagger");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,96 +26,74 @@ app.use(cors());
 app.use(express.json());
 
 // Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET || "fallback_secret",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 24 * 60 * 60 * 1000
-  }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallback_secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }, // Set to true in production with HTTPS
+  })
+);
 
 // Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// Public routes
+// Routes
 app.use("/auth", authRoutes);
-
-// Protected routes
 app.use("/api/books", bookRoutes);
 app.use("/api/authors", authorRoutes);
-
-// MongoDB Connection
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/w03-project");
-    console.log("? Connected to MongoDB successfully");
-  } catch (error) {
-    console.error("? MongoDB connection error:", error.message);
-  }
-};
-
-connectDB();
+app.use("/api/categories", categoryRoutes);
+app.use("/api/publishers", publisherRoutes);
 
 // Swagger Documentation
 swaggerDocs(app);
 
-// Health check route
-app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    message: "Server is running", 
-    timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
-    authenticated: req.isAuthenticated() ? "Yes" : "No"
-  });
-});
-
 // Root route
 app.get("/", (req, res) => {
-  res.json({ 
-    message: "W04 Project API with OAuth is running!",
+  res.json({
+    success: true,
+    message: "W06 Project API with 4 Collections is running!",
+    version: "1.0.0",
     endpoints: {
       auth: "/auth",
       books: "/api/books",
       authors: "/api/authors",
+      categories: "/api/categories",
+      publishers: "/api/publishers",
       documentation: "/api-docs",
-      health: "/health"
     },
-    authenticated: req.isAuthenticated()
+    authenticated: req.isAuthenticated(),
+    database: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
   });
 });
 
 // 404 handler
-app.use("*", (req, res) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req.originalUrl} not found`,
   });
 });
 
-// Global error handler
-app.use((error, req, res, next) => {
-  console.error("Global error handler:", error);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? error.message : "Something went wrong"
-  });
-});
+// MongoDB Connection
+async function startServer() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/w03-project");
+    console.log("✅ Connected to MongoDB successfully");
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`?? Server running on port ${PORT}`);
-  console.log(`?? Local: http://localhost:${PORT}`);
-  console.log(`?? API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`?? OAuth available at: http://localhost:${PORT}/auth/google`);
-});
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌐 Local: http://localhost:${PORT}`);
+      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+      console.log(`🔐 OAuth available at: http://localhost:${PORT}/auth/google`);
+    });
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error.message);
+    process.exit(1);
+  }
+}
 
+startServer();
+
+module.exports = app;
