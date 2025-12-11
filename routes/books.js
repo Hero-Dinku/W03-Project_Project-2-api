@@ -184,3 +184,91 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
 });
 
 module.exports = router;
+
+// Protected route that requires OAuth
+router.get('/protected/user-info', isAuthenticated, (req, res) => {
+    res.json({
+        success: true,
+        message: 'Protected route - requires OAuth login',
+        authenticated: true,
+        user: req.user ? {
+            id: req.user.id,
+            name: req.user.displayName,
+            email: req.user.emails?.[0]?.value
+        } : 'User object available after login',
+        accessTime: new Date().toISOString()
+    });
+});
+
+// Another protected route
+router.get('/admin/dashboard', isAuthenticated, (req, res) => {
+    res.json({
+        success: true,
+        message: 'Admin dashboard - protected by OAuth',
+        data: {
+            totalCollections: 4,
+            requiresAuth: true,
+            userRole: 'authenticated'
+        }
+    });
+});
+
+// ========== PROTECTED ROUTES (REQUIRE OAUTH) ==========
+/**
+ * @swagger
+ * /api/books/protected/user-info:
+ *   get:
+ *     summary: Get protected user info (requires OAuth)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Protected user information
+ *       401:
+ *         description: Unauthorized - requires login
+ */
+router.get('/protected/user-info', isAuthenticated, (req, res) => {
+    res.json({
+        success: true,
+        message: '✅ This route is PROTECTED by OAuth authentication',
+        protected: true,
+        requiresLogin: true,
+        user: req.user ? {
+            id: req.user.id,
+            name: req.user.displayName || 'Authenticated User',
+            email: req.user.emails?.[0]?.value || 'user@example.com'
+        } : 'User info available after OAuth login',
+        timestamp: new Date().toISOString(),
+        status: 'Protected route - OAuth required'
+    });
+});
+
+/**
+ * @swagger
+ * /api/books/admin/dashboard:
+ *   get:
+ *     summary: Admin dashboard (requires OAuth)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin dashboard data
+ *       401:
+ *         description: Unauthorized - requires admin login
+ */
+router.get('/admin/dashboard', isAuthenticated, (req, res) => {
+    res.json({
+        success: true,
+        message: '🔒 Admin Dashboard - OAuth Protected',
+        authentication: 'REQUIRED',
+        userStatus: 'Authenticated via OAuth',
+        dashboardData: {
+            totalBooks: 16,
+            totalAuthors: 10,
+            totalCategories: 8,
+            totalPublishers: 8,
+            apiStatus: 'Protected by OAuth'
+        },
+        accessLevel: 'authenticated_user'
+    });
+});
